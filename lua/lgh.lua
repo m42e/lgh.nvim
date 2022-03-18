@@ -6,7 +6,7 @@ local M = {}
 M.config = {
 	basedir = vim.fn.stdpath('data') .. '/githistory/',
 	git_cmd = 'git',
-	verbose = true,
+	verbose = false,
 	fix_ownership = true,
 	diff = true,
 	new_window = 'vnew'
@@ -80,7 +80,7 @@ local function open_backup(dirname, filename, ft, selected, opts)
 		table.insert(steps, "diffthis")
 	end
 
-	function() vim.cmd(table.concat(steps, '\n'))end
+	vim.cmd(table.concat(steps, '\n'))
 end
 
 local function show_history(dirname, filename)
