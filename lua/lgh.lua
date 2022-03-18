@@ -38,6 +38,7 @@ local function run_command(cmd, on_exit, on_stdout)
 			detach = (on_stdout == nil)
 		}
 	)
+	return jobid
 end
 
 local function check_git_dir()
@@ -59,13 +60,15 @@ local function check_git_dir()
 	)
 end
 
-local function open_backup(dirname, filename, ft, selected, opts)
+local function open_backup(dirname, filename, ft, selected)
 	local ago, date, commit
 	local status, err = pcall (function()
-		ago, date, commit = string.match(selected[1], '.*/([^/]*)\t(.+)\t([0-9a-f]+)$')
+		ago, date, commit = string.match(selected[1], '(.*)\t(.+)\t([0-9a-f]+)$')
 	end)
-	local relpath = utils.relative_path(M.config, dirname, filename)
 
+	if commit == nil then return end
+
+	local relpath = utils.relative_path(M.config, dirname, filename)
 	local steps = {}
 
 	if M.config.diff then
@@ -88,18 +91,26 @@ local function show_history(dirname, filename)
 	local relpath = utils.relative_path(M.config, dirname, filename)
 	local ft = vim.bo.filetype
 
-	require('fzf-lua').git_files({
+	local opts = {
 		cmd = 'git log --format="%ar%x09%ad%x09%h" -- ' .. relpath,
 		cwd = M.config.basedir,
 		prompt = "Saved History >>> ",
 		previewer = false,
-		preview = '"git show {3}:' .. relpath .. '"',
+		preview = vim.fn.shellescape('git show {3}:' .. relpath ),
 		fzf_opts = {
 			['--delimiter']   = "'\t'",
+			['--no-multi'] = ''
 		},
 		actions = {
-			["default"]= function(selected, opts) open_backup(dirname, filename, ft, selected, opts) end,
-		} } )
+			["default"]= nil
+		} }
+
+
+	require('fzf-lua.core').fzf_wrap(opts,
+		table.concat(cmds.build_git_command(M.config, 'log', '--format="%ar%x09%ad%x09%h"', '--', relpath), ' '),
+		function(selected) open_backup(dirname, filename, ft, selected) end
+	)()
+
 end
 
 M.show_history = show_history
