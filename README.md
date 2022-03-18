@@ -63,7 +63,7 @@ require('lgh').setup({
 - **verbose**: If true, it will bug you with useless information :D
 - **fix_ownership**: In case you are using you nvim with `su` or `sudo` it will try to restore the original user as file owner
 - **diff**: Show history as diff. Else it will only load the history in a new buffer, without starting diff
-- ** new_window**: How the new window for the history should be created. Like: `vnew`, `new` and options if you like.
+- **new_window**: How the new window for the history should be created. Like: `vnew`, `new` and options if you like.
 
 ## Inspirations
 
