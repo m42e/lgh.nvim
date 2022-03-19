@@ -18,12 +18,6 @@ local function log(...)
 	end
 end
 
-local function ensure_directory(dir)
-	if vim.fn.isdirectory(dir) ~= 1 then
-		vim.fn.mkdir(dir)
-	end
-end
-
 -- public
 local function run_command(cmd, on_exit, on_stdout)
 	log('running command: ', cmd)
@@ -39,25 +33,6 @@ local function run_command(cmd, on_exit, on_stdout)
 		}
 	)
 	return jobid
-end
-
-local function check_git_dir()
-	log('cheching lgh backup directory')
-	run_command(cmds.build_git_command(M.config, 'rev-parse', '--is-inside-work-tree'), function(_, data, _)
-		if data ~= 0 then
-			log('directory not initialized, doing so')
-			run_command(cmds.build_git_command(M.config, 'init', '.'), function(_, data, _)
-				if data ~= 0 then
-					print('Could not initialize lgh.nvim backup directory')
-				end
-				run_command(cmds.build_git_command(M.config, 'config', '--local', 'user.email', 'local-history-git@noemail.com'))
-				run_command(cmds.build_git_command(M.config, 'config', '--local', 'user.name', 'local-history-git'))
-				run_command(cmds.build_git_command(M.config, 'commit', '--allow-empty', '-m', 'initial commit (empty)'))
-			end
-			)
-		end
-	end
-	)
 end
 
 local function open_backup(dirname, filename, ft, selected)
@@ -121,22 +96,7 @@ local function setup(opts)
 	if string.sub(globals.basedir, -1) ~= '/' then
 		globals.basedir = globals.basedir .. '/'
 	end
-	ensure_directory(globals.basedir)
-	check_git_dir()
-	log('setting up lgh.nvim', vim.inspect(globals))
 	M.config = globals
-
-	vim.cmd [[
-
-		augroup lgh.nvim
-				autocmd!
-				autocmd BufWritePost * lua require('lgh').backup_file(vim.fn.expand("%:p:h"), vim.fn.expand("%:t"))
-		augroup END
-
-		com! LGHFix lua require('lgh').fix_dangling()
-		com! LGHistory lua require('lgh').show_history(vim.fn.expand("%:p:h"), vim.fn.expand("%:t"))
-	]]
-
 end
 M.setup = setup
 
@@ -154,6 +114,7 @@ local function backup_file(dirname, filename)
 		end
 	end
 	table.insert(commands, 1, cmds.get_copy_command(M.config, dirname, filename))
+	table.insert(commands, 1, cmds.initialization(M.config, dirname, filename))
 	run_command(cmds.shell_cmd(unpack(commands)))
 end
 M.backup_file = backup_file
