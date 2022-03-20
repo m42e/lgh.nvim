@@ -1,11 +1,17 @@
 local utils = require('lgh.utils')
 local M = {}
 
-
+--- Makes a command executed in the shell
+-- Automatically concats commands and executes them in a shell
+-- @args The commands
 function M.shell_cmd(...)
 	return vim.opt.shell:get() .. ' ' .. vim.opt.shellcmdflag:get() .. ' ' .. vim.fn.shellescape(M.multiple_commands(...))
 end
 
+--- Concats multiple command line commands.
+-- Per default it executes one after another (using ;). You can change that
+-- by adding a '&&' or '||' as concatenation element
+-- @args The commands
 function M.multiple_commands(...)
 	local commands = {...}
 	local tbl = {}
@@ -27,6 +33,9 @@ function M.multiple_commands(...)
 	return '(' .. table.concat(tbl, ' ') .. ')'
 end
 
+--- Build a git command with the base directory
+-- @opts The options for lgh.nvim
+-- @args The command arguments
 function M.build_git_command(opts, ...)
 	local command = {
 		opts.git_cmd,
@@ -42,6 +51,10 @@ function M.build_git_command(opts, ...)
 	return command
 end
 
+--- Get the whole commit chain (add and commit if changed)
+-- @opts The options for lgh.nvim
+-- @dirname The directory name of the file to be commited
+-- @filename The filename name of the file to be commited
 function M.get_commit_command(opts, dirname, filename)
 	local backuppath = utils.get_backup_path(opts, dirname, filename)
 	return M.multiple_commands(
@@ -53,6 +66,10 @@ function M.get_commit_command(opts, dirname, filename)
 	)
 end
 
+--- Get the command to fix the file ownership
+-- @opts The options for lgh.nvim
+-- @dirname The directory name of the file to be commited
+-- @_ Ignored parameter to keep the signatures equal
 function M.get_owner_fix_command(opts, dirname, _)
 	local backupdir = vim.fn.fnameescape(utils.get_backup_dir(opts, dirname))
 	local realuser = vim.env.SUDO_USER
@@ -61,17 +78,28 @@ function M.get_owner_fix_command(opts, dirname, _)
 	end
 	return {'chown', '-R',  realuser, backupdir}
 end
-
+--- Get the command to copy the file to backup into the right directory
+-- @opts The options for lgh.nvim
+-- @dirname The directory name of the file to be commited
+-- @filename The filename name of the file to be commited
 function M.get_copy_command(opts, dirname, filename)
 	local backuppath = utils.get_backup_path(opts, dirname, filename)
 	return {'cp', vim.fn.fnameescape(vim.fn.resolve(vim.fn.expand("%:p"))), vim.fn.fnameescape(backuppath) }
 end
 
+--- Get command for creating dir for the backup
+-- @opts The options for lgh.nvim
+-- @dirname The directory name of the file to be commited
+-- @filename The filename name of the file to be commited
 function M.make_backup_dir(opts, dirname, filename)
 	local backuppath = utils.get_backup_path(opts, dirname, filename)
 	return {'mkdir', '-f', '-p', backuppath}
 end
 
+--- Get command for the initialization of the backup directory
+-- @opts The options for lgh.nvim
+-- @dirname The directory name of the file to be commited
+-- @filename The filename name of the file to be commited
 function M.initialization(opts, dirname, filename)
 	local backuppath = utils.get_backup_path(opts, dirname, filename)
 	return M.multiple_commands(

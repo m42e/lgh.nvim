@@ -12,6 +12,8 @@ M.config = {
 	new_window = 'vnew'
 }
 
+--- Logging if enabled
+-- @args things to log
 local function log(...)
 	if M.config.verbose then
 		print(...)
@@ -19,6 +21,10 @@ local function log(...)
 end
 
 -- public
+--- Run a command in the base directory and return the job id
+-- @cmd The command to run
+-- @on_exit Function to be called if the command completes
+-- @on_stdout Function to receive output
 local function run_command(cmd, on_exit, on_stdout)
 	log('running command: ', cmd)
 	local jobid = vim.fn.jobstart(
@@ -35,6 +41,11 @@ local function run_command(cmd, on_exit, on_stdout)
 	return jobid
 end
 
+--- Opent the backup for a file
+-- @dirname Dirname of the file to show backup for
+-- @filename Filename of the file to show backup for
+-- @ft Filetype of the original file (for highlighting)
+-- @selected Selected entry of history, to extract commit
 local function open_backup(dirname, filename, ft, selected)
 	local ago, date, commit
 	local status, err = pcall (function()
@@ -61,6 +72,9 @@ local function open_backup(dirname, filename, ft, selected)
 	vim.cmd(table.concat(steps, '\n'))
 end
 
+--- Show the history of the current file
+-- @dirname Dirname of the file to show backups
+-- @filename Filename of the file to show backups
 local function show_history(dirname, filename)
 	local backuppath = utils.get_backup_path(M.config, dirname, filename)
 	local relpath = utils.relative_path(M.config, dirname, filename)
@@ -87,9 +101,10 @@ local function show_history(dirname, filename)
 	)()
 
 end
-
 M.show_history = show_history
 
+--- Setup function for lgh.nvim
+-- @opts Options for lgh.nvim
 local function setup(opts)
 	local globals = vim.tbl_deep_extend("keep", opts, M.config)
 	globals.basedir = vim.fn.resolve(globals.basedir)
@@ -100,6 +115,9 @@ local function setup(opts)
 end
 M.setup = setup
 
+--- Backup a file
+-- @dirname Directory of the file
+-- @filename Filename of the file
 local function backup_file(dirname, filename)
 	local commands = {}
 	table.insert(commands, cmds.get_commit_command(M.config, dirname, filename))
@@ -119,6 +137,8 @@ local function backup_file(dirname, filename)
 end
 M.backup_file = backup_file
 
+--- Fix dangling commits
+-- In case some file has been copied but not commited
 local function fix_dangling()
 	local commands = {}
 	local backupdir = vim.fn.fnameescape(utils.get_backup_dir(M.config))
