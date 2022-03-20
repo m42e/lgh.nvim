@@ -5,8 +5,8 @@ set cpo&vim " reset them to defaults
 
 " command to run our plugin
 augroup lgh.nvim
-autocmd!
-autocmd BufWritePost * lua require('lgh').backup_file(vim.fn.expand("%:p:h"), vim.fn.expand("%:t"))
+	autocmd!
+	autocmd BufWritePost * lua require('lgh').backup_file(vim.fn.expand("%:p:h"), vim.fn.expand("%:t"))
 augroup END
 
 com! LGHFix lua require('lgh').fix_dangling()
