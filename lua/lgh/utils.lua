@@ -6,11 +6,6 @@ function clean_filename(filename)
 	end
 	return filename
 end
-function M.ensure_directory(dir)
-	if vim.fn.isdirectory(dir) ~= 1 then
-		vim.fn.mkdir(dir, 'p')
-	end
-end
 
 function M.get_backup_path(opts, dirname, filename)
   local backupdir = M.get_backup_dir(opts, dirname)
@@ -23,7 +18,6 @@ function M.get_backup_dir(opts, dirname, _)
 	if dirname ~= nil then
 		backupdir = backupdir .. '/' .. clean_filename(dirname)
 	end
-	M.ensure_directory(backupdir)
 	return backupdir
 end
 

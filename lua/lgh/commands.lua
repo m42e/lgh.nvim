@@ -24,7 +24,7 @@ function M.multiple_commands(...)
 		table.insert(tbl, entry)
 		add_semicolon = (string.find('&& ||', entry) == nil)
 	end
-	return table.concat(tbl, ' ')
+	return '(' .. table.concat(tbl, ' ') .. ')'
 end
 
 function M.build_git_command(opts, ...)
@@ -65,6 +65,27 @@ end
 function M.get_copy_command(opts, dirname, filename)
 	local backuppath = utils.get_backup_path(opts, dirname, filename)
 	return {'cp', vim.fn.fnameescape(vim.fn.resolve(vim.fn.expand("%:p"))), vim.fn.fnameescape(backuppath) }
+end
+
+function M.make_backup_dir(opts, dirname, filename)
+	local backuppath = utils.get_backup_path(opts, dirname, filename)
+	return {'mkdir', '-f', '-p', backuppath}
+end
+
+function M.initialization(opts, dirname, filename)
+	local backuppath = utils.get_backup_path(opts, dirname, filename)
+	return M.multiple_commands(
+		M.make_backup_dir(opts, dirname, filename),
+		'&&',
+		M.build_git_command(opts, 'rev-parse', '--is-inside-work-tree'),
+		'||',
+		M.multiple_commands(
+			M.build_git_command(opts, 'init', '.'),
+			M.build_git_command(opts, 'config', '--local', 'user.email', 'local-history-git@noemail.com'),
+			M.build_git_command(opts, 'config', '--local', 'user.name', 'local-history-git'),
+			M.build_git_command(opts, 'commit', '--allow-empty', '-m', 'initial commit (empty)')
+		)
+	)
 end
 
 return M
