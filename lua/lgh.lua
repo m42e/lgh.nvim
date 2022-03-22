@@ -20,6 +20,14 @@ local function log(...)
 	end
 end
 
+local function ensure_directory(dir)
+	if vim.fn.isdirectory(dir) ~= 1 then
+		log('creating directory')
+		vim.fn.mkdir(dir)
+	end
+end
+
+
 -- public
 --- Run a command in the base directory and return the job id
 -- @cmd The command to run
@@ -27,6 +35,7 @@ end
 -- @on_stdout Function to receive output
 local function run_command(cmd, on_exit, on_stdout)
 	log('running command: ', cmd)
+	ensure_directory(M.config.basedir)
 	local jobid = vim.fn.jobstart(
 		cmd,
 		{
