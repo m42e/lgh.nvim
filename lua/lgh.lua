@@ -34,19 +34,31 @@ end
 -- @on_exit Function to be called if the command completes
 -- @on_stdout Function to receive output
 local function run_command(cmd, on_exit, on_stdout)
-	log('running command: ', cmd)
 	ensure_directory(M.config.basedir)
+  local function on_exit_wrapper(jobid, exit_code, event)
+    log(event,'[', jobid, ']: ', exit_code)
+    if on_exit ~= nil then
+      on_exit(jobid, exit_code, event)
+    end
+  end
+  local function on_stdout_wrapper(jobid, data, event)
+    log(event,'[', jobid, ']: ', table.concat(data, '\n'))
+    if on_stdout ~= nil then
+      on_stdout(jobid, data, event)
+    end
+  end
 	local jobid = vim.fn.jobstart(
 		cmd,
 		{
 			stdout_buffered = true,
 			cwd = M.config.basedir,
-			on_exit = on_exit,
-			on_stdout = on_stdout,
-			on_stderr = on_stdout,
-			detach = (on_stdout == nil)
+			on_exit = on_exit_wrapper,
+			on_stdout = on_stdout_wrapper,
+			on_stderr = on_stdout_wrapper,
+      detach = (on_stdout == nil)
 		}
 	)
+  log('command [', jobid, ']: ', cmd)
 	return jobid
 end
 
