@@ -93,7 +93,7 @@ end
 -- @filename The filename name of the file to be commited
 function M.make_backup_dir(opts, dirname, filename)
 	local backuppath = utils.get_backup_path(opts, dirname, filename)
-	return {'mkdir', '-f', '-p', backuppath}
+	return {'mkdir', '-p', backuppath}
 end
 
 --- Get command for the initialization of the backup directory
@@ -111,7 +111,7 @@ function M.initialization(opts, dirname, filename)
 			M.build_git_command(opts, 'init', '.'),
 			M.build_git_command(opts, 'config', '--local', 'user.email', 'local-history-git@noemail.com'),
 			M.build_git_command(opts, 'config', '--local', 'user.name', 'local-history-git'),
-			M.build_git_command(opts, 'commit', '--allow-empty', '-m', 'initial commit (empty)')
+			M.build_git_command(opts, 'commit', '--allow-empty', '-m', '"initial commit empty"')
 		)
 	)
 end
