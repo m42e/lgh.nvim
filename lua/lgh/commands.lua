@@ -92,7 +92,7 @@ end
 -- @dirname The directory name of the file to be commited
 -- @filename The filename name of the file to be commited
 function M.make_backup_dir(opts, dirname, filename)
-	local backuppath = utils.get_backup_path(opts, dirname, filename)
+	local backuppath = utils.get_backup_dir(opts, dirname, filename)
 	return {'mkdir', '-p', backuppath}
 end
 
