@@ -17,7 +17,7 @@ function M.multiple_commands(...)
 	local tbl = {}
 
 	local add_semicolon = false
-	for _, c in pairs(commands) do
+	for k, c in pairs(commands) do
 		local entry
 		if type(c) == "string" then
 			entry = c
@@ -76,7 +76,11 @@ function M.get_owner_fix_command(opts, dirname, _)
 	if realuser == nil then
 		realuser = vim.env.USER
 	end
-	return {'chown', '-R',  realuser, backupdir}
+  if realuser == nil then
+    local pipe = io.popen('whoami')
+    realuser = pipe:read("*a")
+  end
+  return {'chown', '-R', realuser, backupdir}
 end
 --- Get the command to copy the file to backup into the right directory
 -- @opts The options for lgh.nvim
