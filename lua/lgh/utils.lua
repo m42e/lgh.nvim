@@ -40,14 +40,16 @@ end
 
 --- Dump an object
 -- @o object to dump
-function M.dump(o)
+function M.dump(o, depth)
+   depth = depth or 2
    if type(o) == 'table' then
-      local s = '{ '
+      local s = string.rep(" ", depth) .. '{\n'
       for k,v in pairs(o) do
          if type(k) ~= 'number' then k = '"'..k..'"' end
-         s = s .. '['..k..'] = ' .. dump(v) .. ','
+         s = s.. string.rep(" ", depth) .. '['..k..'] = '
+         s = s .. M.dump(v, depth+2) .. ',\n'
       end
-      return s .. '} '
+      return s .. '}\n'
    else
       return tostring(o)
    end
