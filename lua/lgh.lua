@@ -69,9 +69,9 @@ end
 -- @selected Selected entry of history, to extract commit
 local function open_backup(dirname, filename, ft, selected)
 	local ago, date, commit
-	local status, err = pcall (function()
-		ago, date, commit = string.match(selected[1], '(.*)\t(.+)\t([0-9a-f]+)$')
-	end)
+  ago = selected.reltime
+  date = selected.date
+  commit = selected.hash
 
 	if commit == nil then return end
 
@@ -81,6 +81,7 @@ local function open_backup(dirname, filename, ft, selected)
 	if M.config.diff then
 		table.insert(steps, "diffthis")
 	end
+
 
 	table.insert(steps, M.config.new_window ..' | r! ' .. table.concat(cmds.build_git_command(M.config, 'show', commit..':'..relpath), ' '))
 	table.insert(steps,  'normal! 1Gdd')
@@ -101,25 +102,78 @@ local function show_history(dirname, filename)
 	local relpath = utils.relative_path(M.config, dirname, filename)
 	local ft = vim.bo.filetype
 
-	local opts = {
-		cmd = 'git log --format="%ar%x09%ad%x09%h" -- ' .. relpath,
+  local pickers = require "telescope.pickers"
+  local finders = require "telescope.finders"
+  local conf = require("telescope.config").values
+  local entry_display = require "telescope.pickers.entry_display"
+  local actions = require "telescope.actions"
+  local action_state = require "telescope.actions.state"
+
+  local cmd = {'git', 'log', '--format=%ar%x09%ad%x09%h', '--', relpath}
+
+  local displayer = entry_display.create {
+    separator = " ",
+    items = {
+      { width = 20 },
+      { remaining = true },
+    },
+  }
+
+  local make_display = function(entry)
+    print(entry.reltime)
+    return displayer {
+      { entry.reltime, "TelescopeResultsIdentifier" },
+      entry.date,
+    }
+  end
+
+  local opts = {
 		cwd = M.config.basedir,
-		prompt = "Saved History >>> ",
-		previewer = false,
-		preview = vim.fn.shellescape('git show {3}:' .. relpath ),
-		fzf_opts = {
-			['--delimiter']   = "'\t'",
-			['--no-multi'] = ''
-		},
-		actions = {
-			["default"]= nil
-		} }
+    delimiter = '\t',
+    entry_maker = function(entry)
+      local v = {}
+      for k in string.gmatch(entry, "([^\t]+)") do
+        table.insert(v, k)
+      end
+      return {
+        value = v[3],
+        reltime = v[1],
+        date = v[2],
+        hash = v[3],
+        display = make_display,
+        ordinal = v[1]
+      }
+    end
+  }
+  local finder = finders.new_oneshot_job( cmd, opts )
 
-
-	require('fzf-lua.core').fzf_wrap(opts,
-		table.concat(cmds.build_git_command(M.config, 'log', '--format="%ar%x09%ad%x09%h"', '--', relpath), ' '),
-		function(selected) open_backup(dirname, filename, ft, selected) end
-	)()
+  local preview_maker = function(filepath, bufnr, opts)
+    local term = vim.api.nvim_open_term(bufnr, {})
+    local function send_output(_, data, _ )
+      for _, d in ipairs(data) do
+        vim.api.nvim_chan_send(term, d..'\r\n')
+      end
+    end
+    vim.fn.jobstart(
+    {
+      'catimg', filepath  -- Terminal image viewer command
+    },
+    {on_stdout=send_output, stdout_buffered=true, pty=true})
+  end
+   pickers.new(opts, {
+      prompt_title = "History",
+      finder = finder,
+      sorter = conf.generic_sorter(opts),
+      buffer_previewer_maker = preview_maker,
+      attach_mappings = function(prompt_bufnr, map)
+        actions.select_default:replace(function()
+            actions.close(prompt_bufnr)
+            local selection = action_state.get_selected_entry()
+            open_backup(dirname, filename, ft, selection)
+          end)
+        return true
+      end,
+    }):find()
 
 end
 M.show_history = show_history

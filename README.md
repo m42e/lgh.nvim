@@ -38,7 +38,7 @@ With packer:
 ```
 use { 'm42e/lgh.nvim',
         requires = {
-            "ibhagwan/fzf-lua",
+            "nvim-telescope/telescope.nvim",
         },
     }
 ```
