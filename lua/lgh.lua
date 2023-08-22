@@ -13,6 +13,8 @@ M.config = {
 	new_window = 'vnew'
 }
 
+M.last_error = {}
+
 --- Logging if enabled
 -- @args things to log
 local function log(...)
@@ -34,7 +36,7 @@ end
 -- @cmd The command to run
 -- @on_exit Function to be called if the command completes
 -- @on_stdout Function to receive output
-local function run_command(cmd, on_exit, on_stdout)
+local function run_command(cmd, on_exit, on_stdout, on_stderr)
 	ensure_directory(M.config.basedir)
   local function on_exit_wrapper(jobid, exit_code, event)
     log(event,'[', jobid, ']: ', exit_code)
@@ -48,6 +50,13 @@ local function run_command(cmd, on_exit, on_stdout)
       on_stdout(jobid, data, event)
     end
   end
+  local function on_stderr_wrapper(jobid, data, event)
+    log(event,'[', jobid, ']: ', table.concat(data, '\n'))
+    if on_stderr ~= nil then
+      on_stderr(jobid, data, event)
+    end
+  end
+	log('running command: ', cmd)
 	local jobid = vim.fn.jobstart(
 		cmd,
 		{
@@ -56,7 +65,7 @@ local function run_command(cmd, on_exit, on_stdout)
 			on_exit = on_exit_wrapper,
 			on_stdout = on_stdout_wrapper,
 			on_stderr = on_stdout_wrapper,
-      detach = (on_stdout == nil)
+			detach = false -- (on_stdout == nil and on_stderr == nil),
 		}
 	)
   log('command [', jobid, ']: ', cmd)
@@ -212,14 +221,50 @@ local function setup(opts)
 end
 M.setup = setup
 
+local function handle_stderr(channel, data, name)
+  for _,v in ipairs(data) do
+    table.insert(M.last_error, v)
+  end
+end
+M.handle_stderr = handle_stderr
+
+local function handle_exit(channel, exitcode, name)
+  if exitcode ~= 0 then
+    print("An error occured")
+    for _,v in ipairs(M.last_error) do
+      print(v)
+    end
+  end
+end
+M.handle_exit = handle_exit
+
+local function is_superuser_active()
+  local is_superuser_mode = false
+  local effectiveuserid = vim.fn.system("whoami")
+  effectiveuserid = effectiveuserid:gsub("%s+", "")
+  local user = vim.env.SUDO_USER
+  if user == nil then
+    user = vim.env.USER
+  end
+	if user ~= effectiveuserid then
+    is_superuser_mode = true
+  end
+  return is_superuser_mode
+end
+M.is_superuser_active = is_superuser_active
+
 --- Backup a file
 -- @dirname Directory of the file
 -- @filename Filename of the file
 local function backup_file(dirname, filename)
 	local commands = {}
-	table.insert(commands, cmds.get_commit_command(M.config, dirname, filename))
-  vim.fn.system("[[ \"${SUDO_USER:-$USER}\" == `whoami` ]]")
-	if vim.v.shellerror ~= 0 then
+  local is_superuser_mode = M.is_superuser_active()
+  commit_command = cmds.get_commit_command(M.config, dirname, filename)
+  if is_superuser_mode then
+    commit_command = cmds.wrap_in_sudo(commit_command)
+  end
+	table.insert(commands, commit_command)
+  if is_superuser_mode then
 		if M.config.fix_ownership then
 			log('trying to fix ownership, registering callback')
 			table.insert(commands, 1, cmds.get_owner_fix_command(M.config, dirname, filename))
@@ -235,7 +280,8 @@ local function backup_file(dirname, filename)
   end
 	table.insert(commands, 1, cmds.get_copy_command(M.config, dirname, filename))
 	table.insert(commands, 1, cmds.initialization(M.config, dirname, filename))
-	run_command(cmds.shell_cmd(unpack(commands)))
+
+	run_command(cmds.shell_cmd(unpack(commands)), M.handle_exit, nil, M.handle_stderr)
 end
 M.backup_file = backup_file
 
@@ -246,7 +292,7 @@ local function fix_dangling()
 	local backupdir = vim.fn.fnameescape(utils.get_backup_dir(M.config))
 	table.insert(commands, cmds.build_git_command(M.config, 'add',  backupdir))
 	table.insert(commands, cmds.build_git_command(M.config, 'commit',  '-m', '"Backup danlging files ' .. backupdir .. '"'))
-	run_command(cmds.shell_cmd(unpack(commands)))
+	run_command(cmds.shell_cmd(unpack(commands)), M.handle_exit, nil, M.handle_stderr)
 end
 M.fix_dangling = fix_dangling
 

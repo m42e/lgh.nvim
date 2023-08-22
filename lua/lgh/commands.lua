@@ -100,6 +100,19 @@ function M.make_backup_dir(opts, dirname, filename)
 	return {'mkdir', '-p', backuppath}
 end
 
+--- Wrap function to be called with real user in sudo mode
+-- @command The command table to wrap
+function M.wrap_in_sudo(command)
+  if type(command) == 'table' then
+    table.insert(command, 1, vim.env.SUDO_USER)
+    table.insert(command, 1, '-u')
+    table.insert(command, 1, 'sudo')
+  else
+    command = 'sudo -u ' .. vim.env.SUDO_USER .. ' ' .. command
+  end
+  return command
+end
+
 --- Get command for the initialization of the backup directory
 -- @opts The options for lgh.nvim
 -- @dirname The directory name of the file to be commited
