@@ -28,7 +28,7 @@ function M.multiple_commands(...)
 			table.insert(tbl, ';')
 		end
 		table.insert(tbl, entry)
-		add_semicolon = (string.find('&& ||', entry) == nil)
+		add_semicolon = (string.find('& |', entry) == nil)
 	end
 	return '(' .. table.concat(tbl, ' ') .. ')'
 end

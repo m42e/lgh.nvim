@@ -10,7 +10,8 @@ M.config = {
 	fix_ownership = true,
 	fix_dangling = false,
 	diff = true,
-	new_window = 'vnew'
+	new_window = 'vnew',
+  show_diff_preview = true,
 }
 
 M.last_error = {}
@@ -115,6 +116,7 @@ local function show_history(dirname, filename)
   local status, pickers = pcall(require, "telescope.pickers")
   if status then
     local finders = require "telescope.finders"
+    local previewers = require "telescope.previewers"
     local conf = require("telescope.config").values
     local entry_display = require "telescope.pickers.entry_display"
     local actions = require "telescope.actions"
@@ -157,24 +159,27 @@ local function show_history(dirname, filename)
     }
     local finder = finders.new_oneshot_job( cmd, opts )
 
-    local preview_maker = function(filepath, bufnr, opts)
-      local term = vim.api.nvim_open_term(bufnr, {})
-      local function send_output(_, data, _ )
-        for _, d in ipairs(data) do
-          vim.api.nvim_chan_send(term, d..'\r\n')
+    local diff_preview = previewers.new_termopen_previewer({
+      get_command = function(entry, status)
+        if M.config.show_diff_preview then
+          cmd = cmds.multiple_commands(
+            cmds.build_git_command(M.config, 'show', entry.hash .. ':' .. relpath),
+            '|',
+            {'diff', '--unified', '--color=always', dirname .. '/' .. filename, '-' },
+            '|',
+            {'tail', '-n+5'}
+          )
+        else
+          cmd = cmds.build_git_command(M.config, 'show', entry.hash .. ':' .. relpath )
         end
-      end
-      vim.fn.jobstart(
-      {
-        'catimg', filepath  -- Terminal image viewer command
-      },
-      {on_stdout=send_output, stdout_buffered=true, pty=true})
-    end
+        return cmd
+      end,
+    })
      pickers.new(opts, {
         prompt_title = "History",
         finder = finder,
         sorter = conf.generic_sorter(opts),
-        buffer_previewer_maker = preview_maker,
+        previewer = diff_preview,
         attach_mappings = function(prompt_bufnr, map)
           actions.select_default:replace(function()
               actions.close(prompt_bufnr)
