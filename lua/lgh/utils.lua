@@ -20,11 +20,14 @@ end
 --- Get the backup base directory
 -- @filename Filename to clean
 function M.get_backup_dir(opts, dirname, _)
+  if type(opts.basedir) == "function" then
+    return opts.basedir(opts, dirname, filename)
+  end
   local backupdir = opts.basedir .. '/' .. vim.fn.hostname()
-	if dirname ~= nil then
-		backupdir = backupdir .. '/' .. clean_filename(dirname)
-	end
-	return backupdir
+  if dirname ~= nil then
+    backupdir = backupdir .. '/' .. clean_filename(dirname)
+  end
+  return backupdir
 end
 
 --- Get the full fledged relative path for the file

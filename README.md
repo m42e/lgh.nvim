@@ -59,10 +59,10 @@ require('lgh').setup({
 
 ```
 
-- **basedir**: The location where the history should be saved. Will be created if not existing.
+- **basedir**: The location where the history should be saved. Will be created if not existing. You can provide a **function**(options, dirname, filename) instead. This will be called and is expected to return the basepath for the backup the file.
 - **git_cmd**: The git command used
 - **verbose**: If true, it will bug you with useless information :D
-- **fix_ownership**: In case you are using you nvim with `su` or `sudo` it will try to restore the original user as file owner, disabling this may cause issues. Additionally when running in different user mode, the git command will be executed as original user.
+- **fix_ownership**: In case you are using you nvim with `su` or `sudo` it will try to restore the original user as file owner, disabling this may cause issues with file permission in the backup folder, so make sure you know what you are doing. Additionally when running in different user mode, the git command will be executed as original user.
 - **diff**: Show history as diff. Else it will only load the history in a new buffer, without starting diff
 - **new_window**: How the new window for the history should be created. Like: `vnew`, `new` and options if you like.
 
