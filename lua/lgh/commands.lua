@@ -24,11 +24,11 @@ function M.multiple_commands(...)
 		else
 			entry = table.concat(c, ' ')
 		end
-		if add_semicolon and string.find('&& ||', entry) == nil then
+		if add_semicolon and string.find('& | && ||', entry) == nil then
 			table.insert(tbl, ';')
 		end
 		table.insert(tbl, entry)
-		add_semicolon = (string.find('& |', entry) == nil)
+		add_semicolon = (string.find('& | || &&', entry) == nil)
 	end
 	return '(' .. table.concat(tbl, ' ') .. ')'
 end

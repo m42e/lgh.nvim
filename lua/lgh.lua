@@ -15,6 +15,7 @@ M.config = {
 }
 
 M.last_error = {}
+M.last_command = {}
 
 --- Logging if enabled
 -- @args things to log
@@ -38,6 +39,7 @@ end
 -- @on_exit Function to be called if the command completes
 -- @on_stdout Function to receive output
 local function run_command(cmd, on_exit, on_stdout, on_stderr)
+  M.last_command = cmd
 	ensure_directory(M.config.basedir)
   local function on_exit_wrapper(jobid, exit_code, event)
     log(event,'[', jobid, ']: ', exit_code)
@@ -53,6 +55,7 @@ local function run_command(cmd, on_exit, on_stdout, on_stderr)
   end
   local function on_stderr_wrapper(jobid, data, event)
     log(event,'[', jobid, ']: ', table.concat(data, '\n'))
+    M.handle_stderr(jobid, data, event)
     if on_stderr ~= nil then
       on_stderr(jobid, data, event)
     end
@@ -235,7 +238,7 @@ M.handle_stderr = handle_stderr
 
 local function handle_exit(channel, exitcode, name)
   if exitcode ~= 0 then
-    print("An error occured")
+    print("An error occured while running ", M.last_command, vim.inspect(M.last_error))
     for _,v in ipairs(M.last_error) do
       print(v)
     end
@@ -281,8 +284,10 @@ local function backup_file(dirname, filename)
   if M.config.fix_dangling then
     local backupdir = vim.fn.fnameescape(utils.get_backup_dir(M.config))
     table.insert(commands, cmds.build_git_command(M.config, 'add',  backupdir))
+    table.insert(commands, '&&')
     table.insert(commands, cmds.build_git_command(M.config, 'commit',  '-m', '"Backup danlging files ' .. backupdir .. '"'))
   end
+    table.insert(commands, "exit 0")
 	table.insert(commands, 1, cmds.get_copy_command(M.config, dirname, filename))
 	table.insert(commands, 1, cmds.initialization(M.config, dirname, filename))
 
