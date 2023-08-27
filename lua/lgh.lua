@@ -125,7 +125,6 @@ local function find_in_history()
         actions.close(prompt_bufnr)
         local selection = action_state.get_selected_entry()
         dirname, path = utils.split_path(M.config, selection[1])
-        print(dirname, path)
         M.show_history(dirname, path)
       end)
       return true
@@ -208,7 +207,6 @@ local function show_history(dirname, filename)
         else
           cmd = cmds.build_git_command(M.config, 'show', entry.hash .. ':' .. relpath )
         end
-        print(vim.inspect(cmd))
         return cmd
       end,
     })
