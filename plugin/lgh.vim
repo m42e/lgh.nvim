@@ -3,7 +3,7 @@ if exists('g:loaded_lgh') | finish | endif " prevent loading file twice
 let s:save_cpo = &cpo " save user coptions
 set cpo&vim " reset them to defaults
 
-" command to run our plugin
+" Autocommand for all files
 augroup lgh.nvim
 	autocmd!
 	autocmd BufWritePost * lua require('lgh').backup_file(vim.fn.expand("%:p:h"), vim.fn.expand("%:t"))

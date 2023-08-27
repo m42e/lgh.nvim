@@ -25,9 +25,13 @@ And then you get an fzf window with all the dates when the file has been stored.
 Well, basically the same as for the old one, but it still covers the basics.
 
 - Search for files where you don't have the exact filename
-- Allowing diff mode
 - Handling of more edge use cases.
 - Handling `:q` in diffmode like fugitive does
+
+## Requirements
+
+- git
+- an operating system offering a shell (I think this excludes Windows, if someone is eager to try, e.g. with PowerShell, and it works let me know)
 
 ## Installation
 
@@ -54,7 +58,10 @@ require('lgh').setup({
   verbose = false,
   fix_ownership = true,
   diff = true,
-  new_window = 'vnew'
+  new_window = 'vnew',
+  show_diff_preview = true,
+  disabled_paths = {},
+  disabled_filenames = {},
   })
 
 ```
@@ -66,10 +73,12 @@ require('lgh').setup({
 - **diff**: Show history as diff. Else it will only load the history in a new buffer, without starting diff
 - **new_window**: How the new window for the history should be created. Like: `vnew`, `new` and options if you like.
 - **show_diff_preview**: In preview of previous versions show diff instead of whole file
+- **disabled_paths**: This setting allows you to define __lua patterns__ which the path of the file will be checked against. If a match is found the file will not be backed up.
+- **disabled_filenames**: This setting allows you to define __lua patterns__ which the filename of the file will be checked against. If a match is found the file will not be backed up. You can use this e.g. for files that contain sensitive information.
 
 ## Inspirations
 
-- [vim-historic](https://github.com/serby/vim-historic) Which also handles a local history in git. But uses some shell script and I try to avoid that. To at least have a possibility that it may work on Windows
+- [vim-historic](https://github.com/serby/vim-historic) Which also handles a local history in git. But uses some shell script and I ~try to avoid that~ tried to avoid that. The commands ares till using the shell so Windows will not be supported but no extra shell script.
 - [vim-localhistory](https://github.com/mg979/vim-localhistory) I saw he is using fzf for handling the history files. I really liked the idea, because I thought about how to make vim-historic better but thinking of that I was afraid. vim-localhistory gave me the hint into the right direction.
 
 

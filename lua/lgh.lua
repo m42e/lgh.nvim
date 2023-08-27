@@ -12,6 +12,8 @@ M.config = {
 	diff = true,
 	new_window = 'vnew',
   show_diff_preview = true,
+  disabled_paths = {},
+  disabled_filenames = {},
 }
 
 M.last_error = {}
@@ -261,11 +263,30 @@ local function is_superuser_active()
 end
 M.is_superuser_active = is_superuser_active
 
+local function ignore_file(dirname, filename)
+  for dpattern in M.config.disabled_paths do
+    if string.match(dirname, dpattern, 1) ~= nil then
+      return true
+    end
+  end
+  for fpattern in M.config.disabled_filenames do
+    if string.match(filename, fpattern, 1) ~= nil then
+      return true
+    end
+  end
+  return false
+end
+M.ignore_file = ignore_file
+
 --- Backup a file
 -- @dirname Directory of the file
 -- @filename Filename of the file
 local function backup_file(dirname, filename)
 	local commands = {}
+  if M.ignore_file(dirname, filename) then
+    return
+  end
+
   local is_superuser_mode = M.is_superuser_active()
   commit_command = cmds.get_commit_command(M.config, dirname, filename)
   if is_superuser_mode then
