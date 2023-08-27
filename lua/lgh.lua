@@ -70,7 +70,7 @@ local function run_command(cmd, on_exit, on_stdout, on_stderr)
 			cwd = M.config.basedir,
 			on_exit = on_exit_wrapper,
 			on_stdout = on_stdout_wrapper,
-			on_stderr = on_stdout_wrapper,
+			on_stderr = on_stderr_wrapper,
 			detach = false -- (on_stdout == nil and on_stderr == nil),
 		}
 	)
