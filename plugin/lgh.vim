@@ -11,6 +11,7 @@ augroup END
 
 com! LGHFix lua require('lgh').fix_dangling()
 com! LGHistory lua require('lgh').show_history(vim.fn.expand("%:p:h"), vim.fn.expand("%:t"))
+com! LGHFind lua require('lgh').find_in_history()
 
 let &cpo = s:save_cpo " and restore after
 unlet s:save_cpo

@@ -10,7 +10,8 @@ function clean_filename(filename)
 end
 
 --- Get the backup path
--- @filename Filename to clean
+-- @dirname the directory of the file
+-- @filename Filename to backup
 function M.get_backup_path(opts, dirname, filename)
   local backupdir = M.get_backup_dir(opts, dirname)
   local backuppath = backupdir .. '/' .. clean_filename(filename)
@@ -18,19 +19,36 @@ function M.get_backup_path(opts, dirname, filename)
 end
 
 --- Get the backup base directory
+-- @dirname the directory of the file
 -- @filename Filename to clean
-function M.get_backup_dir(opts, dirname, _)
-  if type(opts.basedir) == "function" then
-    return opts.basedir(opts, dirname, filename)
-  end
-  local backupdir = opts.basedir .. '/' .. vim.fn.hostname()
+function M.get_backup_dir(opts, dirname, filename)
+  local backupdir = M.get_backup_basedir(opts, dirname, filename)
   if dirname ~= nil then
     backupdir = backupdir .. '/' .. clean_filename(dirname)
   end
   return backupdir
 end
 
+--- Get the basedir of the backup
+-- @dirname the directory of the file
+-- @filename Filename
+function M.get_backup_basedir(opts, dirname, filename)
+  if type(opts.basedir) == "function" then
+    return opts.basedir(opts, dirname, filename)
+  end
+  local backupdir = opts.basedir .. '/' .. vim.fn.hostname()
+  return backupdir
+end
+
+--- Split a filepath into the directory and the filename, may not be perfect, but anyhow
+-- @filepath the filepath to split
+function M.split_path(opts, filepath)
+  local lastpart = filepath:match('[^/]+$')
+  return filepath:sub(1, #filepath - #lastpart-1), lastpart
+end
+
 --- Get the full fledged relative path for the file
+-- @dirname the directory of the file
 -- @filename Filename to clean
 function M.relative_path(opts, dirname, filename)
   local backupdir = vim.fn.hostname()

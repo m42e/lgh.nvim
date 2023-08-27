@@ -18,13 +18,21 @@ Install it, feel saver. If you want to see the history of a file type
 :LGHistory
 ```
 
-And then you get an fzf window with all the dates when the file has been stored.
+And then you get a telescope (fallback fzf) window with all the dates when the file has been stored.
+
+
+To search a file in the backup files type
+
+```
+:LGHFind
+```
+
+then select the file and the revision you wish to view.
 
 ## To-dos
 
 Well, basically the same as for the old one, but it still covers the basics.
 
-- Search for files where you don't have the exact filename
 - Handling of more edge use cases.
 - Handling `:q` in diffmode like fugitive does
 
@@ -70,13 +78,13 @@ require('lgh').setup({
 
 ```
 
-- **basedir**: The location where the history should be saved. Will be created if not existing. You can provide a **function**(options, dirname, filename) instead. This will be called and is expected to return the basepath for the backup the file.
+- **basedir**: The location where the history should be saved. Will be created if not existing. You can provide a **function**(options, dirname, filename) instead. This will be called and is expected to return the basepath for the backup the file. It should return the `basedir` in case dirname and filename are `nil`.
 - **git_cmd**: The git command used
 - **verbose**: If true, it will bug you with useless information :D
 - **fix_ownership**: In case you are using you nvim with `su` or `sudo` it will try to restore the original user as file owner, disabling this may cause issues with file permission in the backup folder, so make sure you know what you are doing. Additionally when running in different user mode, the git command will be executed as original user.
 - **diff**: Show history as diff. Else it will only load the history in a new buffer, without starting diff
 - **new_window**: How the new window for the history should be created. Like: `vnew`, `new` and options if you like.
-- **show_diff_preview**: In preview of previous versions show diff instead of whole file, this is only supported if telescope is used
+- **show_diff_preview**: In preview of previous versions show diff instead of whole file, this is only supported if telescope is used. If the file is currently not available on disk, it will fallback to displaying the stored revision.
 - **disabled_paths**: This setting allows you to define __lua patterns__ which the path of the file will be checked against. If a match is found the file will not be backed up.
 - **disabled_filenames**: This setting allows you to define __lua patterns__ which the filename of the file will be checked against. If a match is found the file will not be backed up. You can use this e.g. for files that contain sensitive information.
 

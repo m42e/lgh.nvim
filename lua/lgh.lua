@@ -110,6 +110,34 @@ local function open_backup(dirname, filename, ft, selected)
 	vim.cmd(table.concat(steps, '\n'))
 end
 
+--- Show all available backup files
+local function find_in_history()
+  local status, pickers = pcall(require, "telescope.pickers")
+  if status then
+    local actions = require "telescope.actions"
+    local action_state = require "telescope.actions.state"
+    local backuppath = utils.get_backup_basedir(M.config, nil, nil)
+    local function run_selection(prompt_bufnr, map)
+      actions.select_default:replace(function()
+        actions.close(prompt_bufnr)
+        local selection = action_state.get_selected_entry()
+        dirname, path = utils.split_path(M.config, selection[1])
+        print(dirname, path)
+        M.show_history(dirname, path)
+      end)
+      return true
+    end
+    local opts = {
+      attach_mappings = run_selection,
+      cwd = backuppath
+    }
+    require('telescope.builtin').find_files(opts)
+  else
+    vim.api.nvim_err_writeln('Viewing the backed up files requires telescope')
+  end
+end
+M.find_in_history = find_in_history
+
 --- Show the history of the current file
 -- @dirname Dirname of the file to show backups
 -- @filename Filename of the file to show backups
@@ -166,7 +194,7 @@ local function show_history(dirname, filename)
 
     local diff_preview = previewers.new_termopen_previewer({
       get_command = function(entry, status)
-        if M.config.show_diff_preview then
+        if M.config.show_diff_preview and vim.fn.filereadable(dirname .. '/' .. filename) ~= 0 then
           cmd = cmds.multiple_commands(
             cmds.build_git_command(M.config, 'show', entry.hash .. ':' .. relpath),
             '|',
@@ -177,6 +205,7 @@ local function show_history(dirname, filename)
         else
           cmd = cmds.build_git_command(M.config, 'show', entry.hash .. ':' .. relpath )
         end
+        print(vim.inspect(cmd))
         return cmd
       end,
     })
