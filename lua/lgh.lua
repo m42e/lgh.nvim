@@ -85,6 +85,9 @@ end
 -- @selected Selected entry of history, to extract commit
 local function open_backup(dirname, filename, ft, selected)
 	local ago, date, commit
+  if selected == nil then
+    return
+  end
   ago = selected.reltime
   date = selected.date
   commit = selected.hash
