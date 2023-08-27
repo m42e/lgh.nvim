@@ -293,12 +293,12 @@ end
 M.is_superuser_active = is_superuser_active
 
 local function ignore_file(dirname, filename)
-  for dpattern in M.config.disabled_paths do
+  for _, dpattern in ipairs(M.config.disabled_paths) do
     if string.match(dirname, dpattern, 1) ~= nil then
       return true
     end
   end
-  for fpattern in M.config.disabled_filenames do
+  for _, fpattern in ipairs(M.config.disabled_filenames) do
     if string.match(filename, fpattern, 1) ~= nil then
       return true
     end
