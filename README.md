@@ -3,7 +3,7 @@
 ## What this plugin does
 
 This plugin saves the file worked on in a git repository every time you save.
-Its a rewrite of https://github.com/m42e/vim-lgh in lua. So this runs only with neovim and https://github.com/ibhagwan/fzf-lua
+Its a rewrite of https://github.com/m42e/vim-lgh in lua. So this runs only with neovim and is depending on [telescope](https://github.com/nvim-telescope/telescope.nvim) or fzf-lua as a fallback. fzf-lua does only support selection of previous file, no preview.
 
 ## Why? Don't you know undo?
 
@@ -35,23 +35,27 @@ Well, basically the same as for the old one, but it still covers the basics.
 
 ## Installation
 
-[fzf-lua](https://github.com/ibhagwan/fzf-lua) is required.
+With [lazy.nvim](https://github.com/folke/lazy.nvim):
 
-With packer:
-
-```
-use { 'm42e/lgh.nvim',
-        requires = {
-            "nvim-telescope/telescope.nvim",
-        },
-    }
+```lua
+{
+  "m42e/lgh.nvim",
+  depencencies = {
+    "nvim-telescope/telescope.nvim",
+  },
+  config = function()
+    require("lgh").setup({
+      fix_dangling = true
+    })
+  end,
+}
 ```
 
 ## Options
 
 You can configure it by callling the setup function with the following options, the given value represents the default:
 
-```
+```lua
 require('lgh').setup({
   basedir = vim.fn.stdpath('data') .. '/githistory/',
   git_cmd = 'git',
@@ -72,7 +76,7 @@ require('lgh').setup({
 - **fix_ownership**: In case you are using you nvim with `su` or `sudo` it will try to restore the original user as file owner, disabling this may cause issues with file permission in the backup folder, so make sure you know what you are doing. Additionally when running in different user mode, the git command will be executed as original user.
 - **diff**: Show history as diff. Else it will only load the history in a new buffer, without starting diff
 - **new_window**: How the new window for the history should be created. Like: `vnew`, `new` and options if you like.
-- **show_diff_preview**: In preview of previous versions show diff instead of whole file
+- **show_diff_preview**: In preview of previous versions show diff instead of whole file, this is only supported if telescope is used
 - **disabled_paths**: This setting allows you to define __lua patterns__ which the path of the file will be checked against. If a match is found the file will not be backed up.
 - **disabled_filenames**: This setting allows you to define __lua patterns__ which the filename of the file will be checked against. If a match is found the file will not be backed up. You can use this e.g. for files that contain sensitive information.
 
