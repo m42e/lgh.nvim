@@ -152,25 +152,23 @@ M.find_in_history = find_in_history
 -- @dirname Dirname of the file to show backups
 -- @filename Filename of the file to show backups
 local function show_history(dirname, filename, nodiff)
-  local backuppath = utils.get_backup_path(M.config, dirname, filename)
   local relpath = utils.relative_path(M.config, dirname, filename)
-  local ft = vim.bo.filetype
   local noshowdiff = nodiff or false
 
   local status, pickers = pcall(require, "telescope.pickers")
   local finders = require "telescope.finders"
   local previewers = require "telescope.previewers"
-  local conf = require("telescope.config").values
   local entry_display = require "telescope.pickers.entry_display"
   local actions = require "telescope.actions"
   local action_state = require "telescope.actions.state"
+  local from_entry = require "telescope.from_entry"
 
-  local cmd = {'git', 'log', '--format=%ar%x09%ad%x09%h', '--', relpath}
+  local cmd = {'git', 'log', '--format=%ar%x09%ai%x09%h', '--', relpath}
 
   local displayer = entry_display.create {
     separator = " ",
     items = {
-      { width = 20 },
+      { width = 24 },
       { remaining = true },
     },
   }
@@ -202,22 +200,59 @@ local function show_history(dirname, filename, nodiff)
   }
   local finder = finders.new_oneshot_job( cmd, opts )
 
-  local diff_preview = previewers.new_termopen_previewer({
-    get_command = function(entry, status)
-      if M.config.show_diff_preview and vim.fn.filereadable(dirname .. '/' .. filename) ~= 0 then
-        cmd = cmds.multiple_commands(
-        cmds.build_git_command(M.config, 'show', entry.hash .. ':' .. relpath),
-        '|',
-        {'diff', '--unified', '--color=always', dirname .. '/' .. filename, '-' },
-        '|',
-        {'tail', '-n+5'}
-        )
-      else
-        cmd = cmds.build_git_command(M.config, 'show', entry.hash .. ':' .. relpath )
-      end
-      return cmd
+  local putils = require "telescope.previewers.utils"
+  local conf = require("telescope.config").values
+  local diff_preview = previewers.new_buffer_previewer {
+    title = "Git File Diff Preview",
+    get_buffer_by_name = function(_, entry)
+      return entry.value
     end,
-  })
+
+    define_preview = function(self, entry)
+      if entry.status and (entry.status == "??" or entry.status == "A ") then
+        local p = from_entry.path(entry, true)
+        if p == nil or p == "" then
+          return
+        end
+        conf.buffer_previewer_maker(p, self.state.bufnr, {
+          bufname = self.state.bufname,
+          winid = self.state.winid,
+        })
+      else
+        local cmd = ''
+        if M.config.show_diff_preview and vim.fn.filereadable(dirname .. '/' .. filename) ~= 0 then
+          cmd = {vim.opt.shell:get(), '-c', cmds.multiple_commands(
+            cmds.build_git_command(M.config, 'show', entry.hash .. ':' .. relpath),
+            '|',
+            {'diff', '--unified', '--color=never', dirname .. '/' .. filename, '-' },
+            '|',
+            {'tail', '-n+5'}
+            )
+          }
+          vim.api.nvim_buf_set_option(self.state.bufnr, "filetype", "diff")
+        else
+          cmd = cmds.build_git_command(M.config, 'show', entry.hash .. ':' .. relpath )
+          local ft = putils.filetype_detect(relpath)
+          if ft then
+            vim.api.nvim_buf_set_option(self.state.bufnr, "filetype", ft)
+          end
+
+        end
+        putils.job_maker(cmd, self.state.bufnr, {
+          value = entry.value,
+          bufname = self.state.bufname,
+          cwd = opts.cwd,
+          callback = function(bufnr)
+            if vim.api.nvim_buf_is_valid(bufnr) then
+              putils.regex_highlighter(bufnr, "diff")
+            end
+          end,
+        })
+      end
+    end,
+  }
+
+
   pickers.new(opts, {
     prompt_title = "History of " .. filename .. " in " .. dirname,
     finder = finder,
