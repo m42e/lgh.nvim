@@ -59,9 +59,9 @@ function M.get_commit_command(opts, dirname, filename)
 	local backuppath = utils.get_backup_path(opts, dirname, filename)
 	return M.multiple_commands(
 		M.build_git_command(opts, 'add', backuppath),
-		'&&',
+		M.cmd_and(),
 		M.build_git_command(opts, 'diff-index', '--quiet', 'HEAD', '--', backuppath),
-		'||',
+		M.cmd_or(),
 		M.build_git_command(opts, 'commit', '-m', '"Backup ' .. dirname .. '/'.. filename .. '"', backuppath)
 	)
 end
@@ -113,6 +113,18 @@ function M.wrap_in_sudo(command)
   return command
 end
 
+function M.cmd_or()
+  return "||"
+end
+
+function M.cmd_and()
+  return "||"
+end
+
+function M.cmd_pipe()
+  return "|"
+end
+
 --- Get command for the initialization of the backup directory
 -- @opts The options for lgh.nvim
 -- @dirname The directory name of the file to be commited
@@ -121,9 +133,9 @@ function M.initialization(opts, dirname, filename)
 	local backuppath = utils.get_backup_path(opts, dirname, filename)
 	return M.multiple_commands(
 		M.make_backup_dir(opts, dirname, filename),
-		'&&',
+		M.cmd_and(),
 		M.build_git_command(opts, 'rev-parse', '--is-inside-work-tree'),
-		'||',
+		M.cmd_or(),
 		M.multiple_commands(
 			M.build_git_command(opts, 'init', '.'),
 			M.build_git_command(opts, 'config', '--local', 'user.email', 'local-history-git@noemail.com'),

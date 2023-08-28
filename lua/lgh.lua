@@ -4,15 +4,25 @@ local utils = require "lgh.utils"
 local M = {}
 
 M.config = {
-	basedir = vim.fn.stdpath('data') .. '/githistory/',
-	git_cmd = 'git',
-	verbose = false,
-	fix_ownership = true,
-	fix_dangling = false,
-	diff = true,
-	new_window = 'vnew',
+  -- Base directory to save file history
+  basedir = vim.fn.stdpath('data') .. '/githistory/',
+  -- git command to use, coudl be command or full path
+  git_cmd = 'git',
+  -- log a lot of things, you might not want to hear about
+  verbose = false,
+  -- fix ownership of files. highly recommended, especially if you tend to use sudo
+  fix_ownership = true,
+  -- if a uncommitted files is found, just add and commit it
+  fix_dangling = false,
+  -- open history file in diff mode
+  diff = true,
+  -- command to open history file with, something like vnew, tabnew, ect.
+  new_window = 'vnew',
+  -- should the preview display the differences to the current file?
   show_diff_preview = true,
+  -- do not backup the following paths (pattern matching)
   disabled_paths = {},
+  -- do not backup the following files (pattern matching)
   disabled_filenames = {},
 }
 
@@ -22,16 +32,16 @@ M.last_command = {}
 --- Logging if enabled
 -- @args things to log
 local function log(...)
-	if M.config.verbose then
-		print(...)
-	end
+  if M.config.verbose then
+    print(...)
+  end
 end
 
 local function ensure_directory(dir)
-	if vim.fn.isdirectory(dir) ~= 1 then
-		log('creating directory')
-		vim.fn.mkdir(dir)
-	end
+  if vim.fn.isdirectory(dir) ~= 1 then
+    log('creating directory')
+    vim.fn.mkdir(dir)
+  end
 end
 
 
@@ -42,7 +52,7 @@ end
 -- @on_stdout Function to receive output
 local function run_command(cmd, on_exit, on_stdout, on_stderr)
   M.last_command = cmd
-	ensure_directory(M.config.basedir)
+  ensure_directory(M.config.basedir)
   local function on_exit_wrapper(jobid, exit_code, event)
     log(event,'[', jobid, ']: ', exit_code)
     if on_exit ~= nil then
@@ -62,20 +72,20 @@ local function run_command(cmd, on_exit, on_stdout, on_stderr)
       on_stderr(jobid, data, event)
     end
   end
-	log('running command: ', cmd)
-	local jobid = vim.fn.jobstart(
-		cmd,
-		{
-			stdout_buffered = true,
-			cwd = M.config.basedir,
-			on_exit = on_exit_wrapper,
-			on_stdout = on_stdout_wrapper,
-			on_stderr = on_stderr_wrapper,
-			detach = false -- (on_stdout == nil and on_stderr == nil),
-		}
-	)
+  log('running command: ', cmd)
+  local jobid = vim.fn.jobstart(
+  cmd,
+  {
+    stdout_buffered = true,
+    cwd = M.config.basedir,
+    on_exit = on_exit_wrapper,
+    on_stdout = on_stdout_wrapper,
+    on_stderr = on_stderr_wrapper,
+    detach = false -- (on_stdout == nil and on_stderr == nil),
+  }
+  )
   log('command [', jobid, ']: ', cmd)
-	return jobid
+  return jobid
 end
 
 --- Opent the backup for a file
@@ -83,8 +93,8 @@ end
 -- @filename Filename of the file to show backup for
 -- @ft Filetype of the original file (for highlighting)
 -- @selected Selected entry of history, to extract commit
-local function open_backup(dirname, filename, ft, selected)
-	local ago, date, commit
+local function open_backup(dirname, filename, ft, selected, noshowdiff)
+  local ago, date, commit
   if selected == nil then
     return
   end
@@ -92,28 +102,31 @@ local function open_backup(dirname, filename, ft, selected)
   date = selected.date
   commit = selected.hash
 
-	if commit == nil then return end
+  if commit == nil then return end
 
-	local relpath = utils.relative_path(M.config, dirname, filename)
-	local steps = {}
+  local relpath = utils.relative_path(M.config, dirname, filename)
+  local steps = {}
 
-	if M.config.diff then
-		table.insert(steps, "diffthis")
-	end
+  if M.config.diff and not noshowdiff then
+    table.insert(steps, "diffthis")
+  end
 
 
-	table.insert(steps, M.config.new_window ..' | r! ' .. table.concat(cmds.build_git_command(M.config, 'show', commit..':'..relpath), ' '))
-	table.insert(steps,  'normal! 1Gdd')
-	table.insert(steps,  "setlocal bt=nofile bh=wipe nobl noswf ro ft=" .. ft .. " | file ".. filename .. " [" .. date .. "(".. ago .. ")]")
+  table.insert(steps, M.config.new_window ..' | r! ' .. table.concat(cmds.build_git_command(M.config, 'show', commit..':'..relpath), ' '))
+  table.insert(steps,  'normal! 1Gdd')
+  table.insert(steps,  "setlocal bt=nofile bh=wipe nobl noswf ro ft=" .. ft .. " | file ".. filename .. " [" .. date .. "(".. ago .. ")]")
 
-	if M.config.diff then
-		table.insert(steps, "diffthis")
-	end
+  if M.config.diff then
+    table.insert(steps, "diffthis")
+  end
 
-	vim.cmd(table.concat(steps, '\n'))
+  local commands = table.concat(steps, '\n')
+
+  log('Run in vim:\n' .. commands)
+  vim.cmd(commands)
 end
 
---- Show all available backup files
+--- Show all available backup files (for this host)
 local function find_in_history()
   local actions = require "telescope.actions"
   local action_state = require "telescope.actions.state"
@@ -225,12 +238,12 @@ M.show_history = show_history
 --- Setup function for lgh.nvim
 -- @opts Options for lgh.nvim
 local function setup(opts)
-	local globals = vim.tbl_deep_extend("keep", opts, M.config)
-	globals.basedir = vim.fn.resolve(globals.basedir)
-	if string.sub(globals.basedir, -1) ~= '/' then
-		globals.basedir = globals.basedir .. '/'
-	end
-	M.config = globals
+  local globals = vim.tbl_deep_extend("keep", opts, M.config)
+  globals.basedir = vim.fn.resolve(globals.basedir)
+  if string.sub(globals.basedir, -1) ~= '/' then
+    globals.basedir = globals.basedir .. '/'
+  end
+  M.config = globals
 end
 M.setup = setup
 
@@ -259,7 +272,7 @@ local function is_superuser_active()
   if user == nil then
     user = vim.env.USER
   end
-	if user ~= effectiveuserid then
+  if user ~= effectiveuserid then
     is_superuser_mode = true
   end
   return is_superuser_mode
@@ -285,7 +298,7 @@ M.ignore_file = ignore_file
 -- @dirname Directory of the file
 -- @filename Filename of the file
 local function backup_file(dirname, filename)
-	local commands = {}
+  local commands = {}
   if M.ignore_file(dirname, filename) then
     return
   end
@@ -295,38 +308,38 @@ local function backup_file(dirname, filename)
   if is_superuser_mode then
     commit_command = cmds.wrap_in_sudo(commit_command)
   end
-	table.insert(commands, commit_command)
+  table.insert(commands, commit_command)
   if is_superuser_mode then
-		if M.config.fix_ownership then
-			log('trying to fix ownership, registering callback')
-			table.insert(commands, 1, cmds.get_owner_fix_command(M.config, dirname, filename))
-		else
-			print('current user seems not to be the uid neovim is running at, file will not be backed up')
-			return
-		end
-	end
+    if M.config.fix_ownership then
+      log('trying to fix ownership, registering callback')
+      table.insert(commands, 1, cmds.get_owner_fix_command(M.config, dirname, filename))
+    else
+      print('current user seems not to be the uid neovim is running at, file will not be backed up')
+      return
+    end
+  end
   if M.config.fix_dangling then
     local backupdir = vim.fn.fnameescape(utils.get_backup_dir(M.config))
     table.insert(commands, cmds.build_git_command(M.config, 'add',  backupdir))
     table.insert(commands, '&&')
     table.insert(commands, cmds.build_git_command(M.config, 'commit',  '-m', '"Backup danlging files ' .. backupdir .. '"'))
   end
-    table.insert(commands, "exit 0")
-	table.insert(commands, 1, cmds.get_copy_command(M.config, dirname, filename))
-	table.insert(commands, 1, cmds.initialization(M.config, dirname, filename))
+  table.insert(commands, "exit 0")
+  table.insert(commands, 1, cmds.get_copy_command(M.config, dirname, filename))
+  table.insert(commands, 1, cmds.initialization(M.config, dirname, filename))
 
-	run_command(cmds.shell_cmd(unpack(commands)), M.handle_exit, nil, M.handle_stderr)
+  run_command(cmds.shell_cmd(unpack(commands)), M.handle_exit, nil, M.handle_stderr)
 end
 M.backup_file = backup_file
 
 --- Fix dangling commits
 -- In case some file has been copied but not commited
 local function fix_dangling()
-	local commands = {}
-	local backupdir = vim.fn.fnameescape(utils.get_backup_dir(M.config))
-	table.insert(commands, cmds.build_git_command(M.config, 'add',  backupdir))
-	table.insert(commands, cmds.build_git_command(M.config, 'commit',  '-m', '"Backup danlging files ' .. backupdir .. '"'))
-	run_command(cmds.shell_cmd(unpack(commands)), M.handle_exit, nil, M.handle_stderr)
+  local commands = {}
+  local backupdir = vim.fn.fnameescape(utils.get_backup_dir(M.config))
+  table.insert(commands, cmds.build_git_command(M.config, 'add',  backupdir))
+  table.insert(commands, cmds.build_git_command(M.config, 'commit',  '-m', '"Backup danlging files ' .. backupdir .. '"'))
+  run_command(cmds.shell_cmd(unpack(commands)), M.handle_exit, nil, M.handle_stderr)
 end
 M.fix_dangling = fix_dangling
 
