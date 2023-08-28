@@ -115,137 +115,110 @@ end
 
 --- Show all available backup files
 local function find_in_history()
-  local status, pickers = pcall(require, "telescope.pickers")
-  if status then
-    local actions = require "telescope.actions"
-    local action_state = require "telescope.actions.state"
-    local backuppath = utils.get_backup_basedir(M.config, nil, nil)
-    local function run_selection(prompt_bufnr, map)
-      actions.select_default:replace(function()
-        actions.close(prompt_bufnr)
-        local selection = action_state.get_selected_entry()
-        dirname, path = utils.split_path(M.config, selection[1])
-        M.show_history(dirname, path)
-      end)
-      return true
-    end
-    local opts = {
-      attach_mappings = run_selection,
-      cwd = backuppath
-    }
-    require('telescope.builtin').find_files(opts)
-  else
-    vim.api.nvim_err_writeln('Viewing the backed up files requires telescope')
+  local actions = require "telescope.actions"
+  local action_state = require "telescope.actions.state"
+  local backuppath = utils.get_backup_basedir(M.config, nil, nil)
+  local function run_selection(prompt_bufnr, map)
+    actions.select_default:replace(function()
+      actions.close(prompt_bufnr)
+      local selection = action_state.get_selected_entry()
+      dirname, path = utils.split_path(M.config, selection[1])
+      M.show_history(dirname, path, true)
+    end)
+    return true
   end
+  local opts = {
+    attach_mappings = run_selection,
+    cwd = backuppath
+  }
+  require('telescope.builtin').find_files(opts)
 end
 M.find_in_history = find_in_history
 
 --- Show the history of the current file
 -- @dirname Dirname of the file to show backups
 -- @filename Filename of the file to show backups
-local function show_history(dirname, filename)
-	local backuppath = utils.get_backup_path(M.config, dirname, filename)
-	local relpath = utils.relative_path(M.config, dirname, filename)
-	local ft = vim.bo.filetype
+local function show_history(dirname, filename, nodiff)
+  local backuppath = utils.get_backup_path(M.config, dirname, filename)
+  local relpath = utils.relative_path(M.config, dirname, filename)
+  local ft = vim.bo.filetype
+  local noshowdiff = nodiff or false
 
   local status, pickers = pcall(require, "telescope.pickers")
-  if status then
-    local finders = require "telescope.finders"
-    local previewers = require "telescope.previewers"
-    local conf = require("telescope.config").values
-    local entry_display = require "telescope.pickers.entry_display"
-    local actions = require "telescope.actions"
-    local action_state = require "telescope.actions.state"
+  local finders = require "telescope.finders"
+  local previewers = require "telescope.previewers"
+  local conf = require("telescope.config").values
+  local entry_display = require "telescope.pickers.entry_display"
+  local actions = require "telescope.actions"
+  local action_state = require "telescope.actions.state"
 
-    local cmd = {'git', 'log', '--format=%ar%x09%ad%x09%h', '--', relpath}
+  local cmd = {'git', 'log', '--format=%ar%x09%ad%x09%h', '--', relpath}
 
-    local displayer = entry_display.create {
-      separator = " ",
-      items = {
-        { width = 20 },
-        { remaining = true },
-      },
+  local displayer = entry_display.create {
+    separator = " ",
+    items = {
+      { width = 20 },
+      { remaining = true },
+    },
+  }
+
+  local make_display = function(entry)
+    return displayer {
+      { entry.reltime, "TelescopeResultsIdentifier" },
+      entry.date,
     }
+  end
 
-    local make_display = function(entry)
-      return displayer {
-        { entry.reltime, "TelescopeResultsIdentifier" },
-        entry.date,
+  local opts = {
+    cwd = M.config.basedir,
+    delimiter = '\t',
+    entry_maker = function(entry)
+      local v = {}
+      for k in string.gmatch(entry, "([^\t]+)") do
+        table.insert(v, k)
+      end
+      return {
+        value = v[3],
+        reltime = v[1],
+        date = v[2],
+        hash = v[3],
+        display = make_display,
+        ordinal = v[1]
       }
     end
+  }
+  local finder = finders.new_oneshot_job( cmd, opts )
 
-    local opts = {
-      cwd = M.config.basedir,
-      delimiter = '\t',
-      entry_maker = function(entry)
-        local v = {}
-        for k in string.gmatch(entry, "([^\t]+)") do
-          table.insert(v, k)
-        end
-        return {
-          value = v[3],
-          reltime = v[1],
-          date = v[2],
-          hash = v[3],
-          display = make_display,
-          ordinal = v[1]
-        }
+  local diff_preview = previewers.new_termopen_previewer({
+    get_command = function(entry, status)
+      if M.config.show_diff_preview and vim.fn.filereadable(dirname .. '/' .. filename) ~= 0 then
+        cmd = cmds.multiple_commands(
+        cmds.build_git_command(M.config, 'show', entry.hash .. ':' .. relpath),
+        '|',
+        {'diff', '--unified', '--color=always', dirname .. '/' .. filename, '-' },
+        '|',
+        {'tail', '-n+5'}
+        )
+      else
+        cmd = cmds.build_git_command(M.config, 'show', entry.hash .. ':' .. relpath )
       end
-    }
-    local finder = finders.new_oneshot_job( cmd, opts )
-
-    local diff_preview = previewers.new_termopen_previewer({
-      get_command = function(entry, status)
-        if M.config.show_diff_preview and vim.fn.filereadable(dirname .. '/' .. filename) ~= 0 then
-          cmd = cmds.multiple_commands(
-            cmds.build_git_command(M.config, 'show', entry.hash .. ':' .. relpath),
-            '|',
-            {'diff', '--unified', '--color=always', dirname .. '/' .. filename, '-' },
-            '|',
-            {'tail', '-n+5'}
-          )
-        else
-          cmd = cmds.build_git_command(M.config, 'show', entry.hash .. ':' .. relpath )
-        end
-        return cmd
-      end,
-    })
-     pickers.new(opts, {
-        prompt_title = "History",
-        finder = finder,
-        sorter = conf.generic_sorter(opts),
-        previewer = diff_preview,
-        attach_mappings = function(prompt_bufnr, map)
-          actions.select_default:replace(function()
-              actions.close(prompt_bufnr)
-              local selection = action_state.get_selected_entry()
-              open_backup(dirname, filename, ft, selection)
-            end)
-          return true
-        end,
-      }):find()
-  else
-
-    local opts = {
-      cmd = 'git log --format="%ar%x09%ad%x09%h" -- ' .. relpath,
-      cwd = M.config.basedir,
-      prompt = "Saved History >>> ",
-      previewer = false,
-      preview = vim.fn.shellescape('git show {3}:' .. relpath ),
-      fzf_opts = {
-        ['--delimiter']   = "'\t'",
-        ['--no-multi'] = ''
-      },
-      actions = {
-        ["default"]= nil
-      } }
-
-
-    require('fzf-lua.core').fzf_wrap(opts,
-      table.concat(cmds.build_git_command(M.config, 'log', '--format="%ar%x09%ad%x09%h"', '--', relpath), ' '),
-      function(selected) open_backup(dirname, filename, ft, selected) end
-    )()
-  end
+      return cmd
+    end,
+  })
+  pickers.new(opts, {
+    prompt_title = "History of " .. filename .. " in " .. dirname,
+    finder = finder,
+    sorter = conf.generic_sorter(opts),
+    previewer = diff_preview,
+    attach_mappings = function(prompt_bufnr, map)
+      actions.select_default:replace(function()
+        actions.close(prompt_bufnr)
+        local selection = action_state.get_selected_entry()
+        open_backup(dirname, filename, ft, selection, noshowdiff)
+      end)
+      return true
+    end,
+  }):find()
 end
 M.show_history = show_history
 

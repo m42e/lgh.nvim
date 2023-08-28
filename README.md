@@ -3,7 +3,9 @@
 ## What this plugin does
 
 This plugin saves the file worked on in a git repository every time you save.
-Its a rewrite of https://github.com/m42e/vim-lgh in lua. So this runs only with neovim and is depending on [telescope](https://github.com/nvim-telescope/telescope.nvim) or fzf-lua as a fallback. fzf-lua does only support selection of previous file, no preview.
+Its a rewrite of https://github.com/m42e/vim-lgh in lua. So this runs only with neovim and is depending on [telescope](https://github.com/nvim-telescope/telescope.nvim).
+
+fzf-lua support has been removed
 
 ## Why? Don't you know undo?
 
@@ -18,7 +20,7 @@ Install it, feel saver. If you want to see the history of a file type
 :LGHistory
 ```
 
-And then you get a telescope (fallback fzf) window with all the dates when the file has been stored.
+And then you get a telescope window with all the dates when the file has been stored.
 
 
 To search a file in the backup files type
