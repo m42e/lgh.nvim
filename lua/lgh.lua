@@ -114,7 +114,15 @@ local function open_backup(dirname, filename, ft, selected, noshowdiff)
 
   table.insert(steps, M.config.new_window ..' | r! ' .. table.concat(cmds.build_git_command(M.config, 'show', commit..':'..relpath), ' '))
   table.insert(steps,  'normal! 1Gdd')
-  table.insert(steps,  "setlocal bt=nofile bh=wipe nobl noswf ro ft=" .. ft .. " | file ".. filename .. " [" .. date .. "(".. ago .. ")]")
+  command = "setlocal bt=nofile bh=wipe nobl noswf ro "
+  if ft then
+    command = command .. " ft=" .. ft
+  end
+  command = command .. " | file " .. "[" .. date .. " (".. ago .. ")] " .. filename
+  if not ft or ft == "" then
+    command = command .. " | filetype detect"
+  end
+  table.insert(steps,  command)
 
   if M.config.diff then
     table.insert(steps, "diffthis")
@@ -154,7 +162,7 @@ M.find_in_history = find_in_history
 local function show_history(dirname, filename, nodiff)
   local relpath = utils.relative_path(M.config, dirname, filename)
   local noshowdiff = nodiff or false
-
+  local ft = vim.bo.filetype
   local status, pickers = pcall(require, "telescope.pickers")
   local finders = require "telescope.finders"
   local previewers = require "telescope.previewers"
