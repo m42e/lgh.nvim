@@ -10,6 +10,8 @@ M.config = {
   git_cmd = 'git',
   -- log a lot of things, you might not want to hear about
   verbose = false,
+  -- write a log file, this may be usefull only for debugging, and you might not want to use it
+  logfile = nil,
   -- fix ownership of files. highly recommended, especially if you tend to use sudo
   fix_ownership = true,
   -- if a uncommitted files is found, just add and commit it
@@ -35,6 +37,47 @@ local function log(...)
   if M.config.verbose then
     print(...)
   end
+  if M.config.logfile then
+    logfile = io.open(M.config.logfile, "a+")
+    logfile:write(...)
+    logfile:write("\n")
+    logfile:close()
+  end
+end
+
+local function log_command_nice(cmd)
+  local level = 1
+  local logoutput = ''
+  for i = 1, #cmd do
+      local c = cmd:sub(i,i)
+      local cc = cmd:sub(i,i+1)
+      if cc == '||' or cc == '&&' or c == ';' then
+        logoutput = logoutput .. '\n'
+        for j = 1, level * 4 do
+          logoutput = logoutput .. ' '
+        end
+      end
+      if c == '(' then
+        level = level + 1
+        logoutput = logoutput .. '\n'
+        for j = 1, level * 4 do
+          logoutput = logoutput .. ' '
+        end
+      end
+      if c == ')' then
+        level = level - 1
+        logoutput = logoutput .. '\n'
+        for j = 1, level * 4 do
+          logoutput = logoutput .. ' '
+        end
+      end
+      logoutput = logoutput .. c
+      if c == ';' then
+          logoutput = logoutput .. ' '
+      end
+  end
+  log(logoutput)
+
 end
 
 local function ensure_directory(dir)
@@ -72,7 +115,7 @@ local function run_command(cmd, on_exit, on_stdout, on_stderr)
       on_stderr(jobid, data, event)
     end
   end
-  log('running command: ', cmd)
+  log_command_nice(cmd)
   local jobid = vim.fn.jobstart(
   cmd,
   {
@@ -84,7 +127,7 @@ local function run_command(cmd, on_exit, on_stdout, on_stderr)
     detach = false -- (on_stdout == nil and on_stderr == nil),
   }
   )
-  log('command [', jobid, ']: ', cmd)
+  log('command [', jobid, '] started')
   return jobid
 end
 
