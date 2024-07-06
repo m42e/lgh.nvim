@@ -60,9 +60,11 @@ function M.get_commit_command(opts, dirname, filename)
   return M.multiple_commands(
     M.build_git_command(opts, 'add', backuppath),
     M.cmd_and(),
-    M.build_git_command(opts, 'diff-index', '--quiet', 'HEAD', '--', backuppath),
-    M.cmd_or(),
-    M.build_git_command(opts, 'commit', '-m', '"Backup ' .. dirname .. '/' .. filename .. '"', backuppath)
+    M.multiple_commands(
+      M.build_git_command(opts, 'diff-index', '--quiet', 'HEAD', '--', backuppath),
+      M.cmd_or(),
+      M.build_git_command(opts, 'commit', '-m', '"Backup ' .. dirname .. '/' .. filename .. '"', backuppath)
+    )
   )
 end
 
@@ -135,13 +137,15 @@ function M.initialization(opts, dirname, filename)
   return M.multiple_commands(
     M.make_backup_dir(opts, dirname, filename),
     M.cmd_and(),
-    M.build_git_command(opts, 'rev-parse', '--is-inside-work-tree'),
-    M.cmd_or(),
     M.multiple_commands(
-      M.build_git_command(opts, 'init', '.'),
-      M.build_git_command(opts, 'config', '--local', 'user.email', 'local-history-git@noemail.com'),
-      M.build_git_command(opts, 'config', '--local', 'user.name', 'local-history-git'),
-      M.build_git_command(opts, 'commit', '--allow-empty', '-m', '"initial commit empty"')
+      M.build_git_command(opts, 'rev-parse', '--is-inside-work-tree'),
+      M.cmd_or(),
+      M.multiple_commands(
+        M.build_git_command(opts, 'init', '.'),
+        M.build_git_command(opts, 'config', '--local', 'user.email', 'local-history-git@noemail.com'),
+        M.build_git_command(opts, 'config', '--local', 'user.name', 'local-history-git'),
+        M.build_git_command(opts, 'commit', '--allow-empty', '-m', '"initial commit empty"')
+      )
     )
   )
 end
