@@ -26,6 +26,8 @@ M.config = {
   disabled_paths = {},
   -- do not backup the following files (pattern matching)
   disabled_filenames = {},
+  -- detach command
+  detach = false,
 }
 
 M.last_error = {}
@@ -49,35 +51,34 @@ local function log_command_nice(cmd)
   local level = 1
   local logoutput = ''
   for i = 1, #cmd do
-      local c = cmd:sub(i,i)
-      local cc = cmd:sub(i,i+1)
-      if cc == '||' or cc == '&&' or c == ';' then
-        logoutput = logoutput .. '\n'
-        for j = 1, level * 4 do
-          logoutput = logoutput .. ' '
-        end
+    local c = cmd:sub(i, i)
+    local cc = cmd:sub(i, i + 1)
+    if cc == '||' or cc == '&&' or c == ';' then
+      logoutput = logoutput .. '\n'
+      for j = 1, level * 4 do
+        logoutput = logoutput .. ' '
       end
-      if c == '(' then
-        level = level + 1
-        logoutput = logoutput .. '\n'
-        for j = 1, level * 4 do
-          logoutput = logoutput .. ' '
-        end
+    end
+    if c == '(' then
+      level = level + 1
+      logoutput = logoutput .. '\n'
+      for j = 1, level * 4 do
+        logoutput = logoutput .. ' '
       end
-      if c == ')' then
-        level = level - 1
-        logoutput = logoutput .. '\n'
-        for j = 1, level * 4 do
-          logoutput = logoutput .. ' '
-        end
+    end
+    if c == ')' then
+      level = level - 1
+      logoutput = logoutput .. '\n'
+      for j = 1, level * 4 do
+        logoutput = logoutput .. ' '
       end
-      logoutput = logoutput .. c
-      if c == ';' then
-          logoutput = logoutput .. ' '
-      end
+    end
+    logoutput = logoutput .. c
+    if c == ';' then
+      logoutput = logoutput .. ' '
+    end
   end
   log(logoutput)
-
 end
 
 local function ensure_directory(dir)
@@ -97,19 +98,19 @@ local function run_command(cmd, on_exit, on_stdout, on_stderr)
   M.last_command = cmd
   ensure_directory(M.config.basedir)
   local function on_exit_wrapper(jobid, exit_code, event)
-    log(event,'[', jobid, ']: ', exit_code)
+    log(event, '[', jobid, ']: ', exit_code)
     if on_exit ~= nil then
       on_exit(jobid, exit_code, event)
     end
   end
   local function on_stdout_wrapper(jobid, data, event)
-    log(event,'[', jobid, ']: ', table.concat(data, '\n'))
+    log(event, '[', jobid, ']: ', table.concat(data, '\n'))
     if on_stdout ~= nil then
       on_stdout(jobid, data, event)
     end
   end
   local function on_stderr_wrapper(jobid, data, event)
-    log(event,'[', jobid, ']: ', table.concat(data, '\n'))
+    log(event, '[', jobid, ']: ', table.concat(data, '\n'))
     M.handle_stderr(jobid, data, event)
     if on_stderr ~= nil then
       on_stderr(jobid, data, event)
@@ -117,15 +118,15 @@ local function run_command(cmd, on_exit, on_stdout, on_stderr)
   end
   log_command_nice(cmd)
   local jobid = vim.fn.jobstart(
-  cmd,
-  {
-    stdout_buffered = true,
-    cwd = M.config.basedir,
-    on_exit = on_exit_wrapper,
-    on_stdout = on_stdout_wrapper,
-    on_stderr = on_stderr_wrapper,
-    detach = false -- (on_stdout == nil and on_stderr == nil),
-  }
+    cmd,
+    {
+      stdout_buffered = true,
+      cwd = M.config.basedir,
+      on_exit = on_exit_wrapper,
+      on_stdout = on_stdout_wrapper,
+      on_stderr = on_stderr_wrapper,
+      detach = M.config.detach -- (on_stdout == nil and on_stderr == nil),
+    }
   )
   log('command [', jobid, '] started')
   return jobid
@@ -155,17 +156,19 @@ local function open_backup(dirname, filename, ft, selected, noshowdiff)
   end
 
 
-  table.insert(steps, M.config.new_window ..' | r! ' .. table.concat(cmds.build_git_command(M.config, 'show', commit..':'..relpath), ' '))
-  table.insert(steps,  'normal! 1Gdd')
+  table.insert(steps,
+    M.config.new_window .. ' | r! ' .. table.concat(cmds.build_git_command(M.config, 'show', commit .. ':' .. relpath),
+      ' '))
+  table.insert(steps, 'normal! 1Gdd')
   command = "setlocal bt=nofile bh=wipe nobl noswf ro "
   if ft then
     command = command .. " ft=" .. ft
   end
-  command = command .. " | file " .. "[" .. date .. " (".. ago .. ")] " .. filename
+  command = command .. " | file " .. "[" .. date .. " (" .. ago .. ")] " .. filename
   if not ft or ft == "" then
     command = command .. " | filetype detect"
   end
-  table.insert(steps,  command)
+  table.insert(steps, command)
 
   if M.config.diff then
     table.insert(steps, "diffthis")
@@ -214,7 +217,7 @@ local function show_history(dirname, filename, nodiff)
   local action_state = require "telescope.actions.state"
   local from_entry = require "telescope.from_entry"
 
-  local cmd = {'git', 'log', '--format=%ar%x09%ai%x09%h', '--', relpath}
+  local cmd = { 'git', 'log', '--format=%ar%x09%ai%x09%h', '--', relpath }
 
   local displayer = entry_display.create {
     separator = " ",
@@ -249,7 +252,7 @@ local function show_history(dirname, filename, nodiff)
       }
     end
   }
-  local finder = finders.new_oneshot_job( cmd, opts )
+  local finder = finders.new_oneshot_job(cmd, opts)
 
   local putils = require "telescope.previewers.utils"
   local conf = require("telescope.config").values
@@ -272,22 +275,21 @@ local function show_history(dirname, filename, nodiff)
       else
         local cmd = ''
         if M.config.show_diff_preview and vim.fn.filereadable(dirname .. '/' .. filename) ~= 0 then
-          cmd = {vim.opt.shell:get(), '-c', cmds.multiple_commands(
+          cmd = { vim.opt.shell:get(), '-c', cmds.multiple_commands(
             cmds.build_git_command(M.config, 'show', entry.hash .. ':' .. relpath),
             '|',
-            {'diff', '--unified', '--color=never', dirname .. '/' .. filename, '-' },
+            { 'diff', '--unified', '--color=never', dirname .. '/' .. filename, '-' },
             '|',
-            {'tail', '-n+5'}
-            )
+            { 'tail', '-n+5' }
+          )
           }
           vim.api.nvim_buf_set_option(self.state.bufnr, "filetype", "diff")
         else
-          cmd = cmds.build_git_command(M.config, 'show', entry.hash .. ':' .. relpath )
+          cmd = cmds.build_git_command(M.config, 'show', entry.hash .. ':' .. relpath)
           local ft = putils.filetype_detect(relpath)
           if ft then
             vim.api.nvim_buf_set_option(self.state.bufnr, "filetype", ft)
           end
-
         end
         putils.job_maker(cmd, self.state.bufnr, {
           value = entry.value,
@@ -334,7 +336,7 @@ end
 M.setup = setup
 
 local function handle_stderr(channel, data, name)
-  for _,v in ipairs(data) do
+  for _, v in ipairs(data) do
     table.insert(M.last_error, v)
   end
 end
@@ -343,7 +345,7 @@ M.handle_stderr = handle_stderr
 local function handle_exit(channel, exitcode, name)
   if exitcode ~= 0 then
     print("An error occured while running ", M.last_command, vim.inspect(M.last_error))
-    for _,v in ipairs(M.last_error) do
+    for _, v in ipairs(M.last_error) do
       print(v)
     end
   end
@@ -406,9 +408,10 @@ local function backup_file(dirname, filename)
   end
   if M.config.fix_dangling then
     local backupdir = vim.fn.fnameescape(utils.get_backup_dir(M.config))
-    table.insert(commands, cmds.build_git_command(M.config, 'add',  backupdir))
+    table.insert(commands, cmds.build_git_command(M.config, 'add', backupdir))
     table.insert(commands, '&&')
-    table.insert(commands, cmds.build_git_command(M.config, 'commit',  '-m', '"Backup danlging files ' .. backupdir .. '"'))
+    table.insert(commands,
+      cmds.build_git_command(M.config, 'commit', '-m', '"Backup danlging files ' .. backupdir .. '"'))
   end
   table.insert(commands, "exit 0")
   table.insert(commands, 1, cmds.get_copy_command(M.config, dirname, filename))
@@ -423,8 +426,8 @@ M.backup_file = backup_file
 local function fix_dangling()
   local commands = {}
   local backupdir = vim.fn.fnameescape(utils.get_backup_dir(M.config))
-  table.insert(commands, cmds.build_git_command(M.config, 'add',  backupdir))
-  table.insert(commands, cmds.build_git_command(M.config, 'commit',  '-m', '"Backup danlging files ' .. backupdir .. '"'))
+  table.insert(commands, cmds.build_git_command(M.config, 'add', backupdir))
+  table.insert(commands, cmds.build_git_command(M.config, 'commit', '-m', '"Backup danlging files ' .. backupdir .. '"'))
   run_command(cmds.shell_cmd(unpack(commands)), M.handle_exit, nil, M.handle_stderr)
 end
 M.fix_dangling = fix_dangling
