@@ -88,7 +88,6 @@ local function ensure_directory(dir)
   end
 end
 
-
 -- public
 --- Run a command in the base directory and return the job id
 -- @cmd The command to run
