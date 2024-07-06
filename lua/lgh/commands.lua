@@ -55,6 +55,19 @@ end
 -- @opts The options for lgh.nvim
 -- @dirname The directory name of the file to be commited
 -- @filename The filename name of the file to be commited
+function M.get_fix_dangling_command(opts)
+  local backupdir = utils.get_backup_dir(opts)
+  return M.multiple_commands(
+    M.build_git_command(opts, 'add', backupdir),
+    M.cmd_and(),
+    M.build_git_command(opts, 'commit', '-m', '"Backup danlging files ' .. backupdir .. '"')
+  )
+end
+
+--- Get the whole commit chain (add and commit if changed)
+-- @opts The options for lgh.nvim
+-- @dirname The directory name of the file to be commited
+-- @filename The filename name of the file to be commited
 function M.get_commit_command(opts, dirname, filename)
   local backuppath = utils.get_backup_path(opts, dirname, filename)
   return M.multiple_commands(

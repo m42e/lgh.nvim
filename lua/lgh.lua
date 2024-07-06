@@ -406,11 +406,8 @@ local function backup_file(dirname, filename)
     end
   end
   if M.config.fix_dangling then
-    local backupdir = vim.fn.fnameescape(utils.get_backup_dir(M.config))
-    table.insert(commands, cmds.build_git_command(M.config, 'add', backupdir))
-    table.insert(commands, '&&')
-    table.insert(commands,
-      cmds.build_git_command(M.config, 'commit', '-m', '"Backup danlging files ' .. backupdir .. '"'))
+    local fix_dangling_command = cmds.get_fix_dangling_command(M.config, dirname)
+    table.insert(commands, fix_dangling_command)
   end
   table.insert(commands, "exit 0")
   table.insert(commands, 1, cmds.get_copy_command(M.config, dirname, filename))
@@ -423,10 +420,7 @@ M.backup_file = backup_file
 --- Fix dangling commits
 -- In case some file has been copied but not commited
 local function fix_dangling()
-  local commands = {}
-  local backupdir = vim.fn.fnameescape(utils.get_backup_dir(M.config))
-  table.insert(commands, cmds.build_git_command(M.config, 'add', backupdir))
-  table.insert(commands, cmds.build_git_command(M.config, 'commit', '-m', '"Backup danlging files ' .. backupdir .. '"'))
+  local commands = cmds.get_fix_dangling_command(M.config)
   run_command(cmds.shell_cmd(unpack(commands)), M.handle_exit, nil, M.handle_stderr)
 end
 M.fix_dangling = fix_dangling
