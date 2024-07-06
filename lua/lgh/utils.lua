@@ -3,10 +3,10 @@ local M = {}
 --- Clean the filename from leading slashes
 -- @filename Filename to clean
 local function clean_filename(filename)
-	if string.sub(filename, 1, 1) == '/' then
-		filename = string.sub(filename, 2)
-	end
-	return filename
+  if string.sub(filename, 1, 1) == '/' then
+    filename = string.sub(filename, 2)
+  end
+  return filename
 end
 
 --- Get the backup path
@@ -15,7 +15,7 @@ end
 function M.get_backup_path(opts, dirname, filename)
   local backupdir = M.get_backup_dir(opts, dirname)
   local backuppath = backupdir .. '/' .. clean_filename(filename)
-	return backuppath
+  return backuppath
 end
 
 --- Get the backup base directory
@@ -44,7 +44,7 @@ end
 -- @filepath the filepath to split
 function M.split_path(opts, filepath)
   local lastpart = filepath:match('[^/]+$')
-  return filepath:sub(1, #filepath - #lastpart-1), lastpart
+  return filepath:sub(1, #filepath - #lastpart - 1), lastpart
 end
 
 --- Get the full fledged relative path for the file
@@ -52,14 +52,11 @@ end
 -- @filename Filename to clean
 function M.relative_path(_, dirname, filename)
   local backupdir = vim.fn.hostname()
-	if dirname ~= nil then
-		backupdir = backupdir .. '/' .. clean_filename(dirname)
-	end
+  if dirname ~= nil then
+    backupdir = backupdir .. '/' .. clean_filename(dirname)
+  end
   local backuppath = backupdir .. '/' .. clean_filename(filename)
-	return backuppath
+  return backuppath
 end
 
 return M
-
-
-
